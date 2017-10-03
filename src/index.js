@@ -1,70 +1,74 @@
 import {keymap} from "prosemirror-keymap"
-import {history} from "prosemirror-history"
 import {baseKeymap} from "prosemirror-commands"
-import {Plugin} from "prosemirror-state"
+import {EditorState} from "prosemirror-state"
+import {EditorView} from "prosemirror-view"
 import {dropCursor} from "prosemirror-dropcursor"
 import {gapCursor} from "prosemirror-gapcursor"
-import {menuBar} from "prosemirror-menu"
+import {Schema, DOMParser, Fragment} from "prosemirror-model"
+import {nodes as basicNodes} from "prosemirror-schema-basic"
+import FigureView from "./nodeview"
 
-import {buildMenuItems} from "./menu"
-import {buildKeymap} from "./keymap"
-import {buildInputRules} from "./inputrules"
+const nodes = {
+  doc: basicNodes.doc,
+  paragraph: basicNodes.paragraph,
 
-export {buildMenuItems, buildKeymap}
-
-// !! This module exports helper functions for deriving a set of basic
-// menu items, input rules, or key bindings from a schema. These
-// values need to know about the schema for two reasons—they need
-// access to specific instances of node and mark types, and they need
-// to know which of the node and mark types that they know about are
-// actually present in the schema.
-//
-// The `exampleSetup` plugin ties these together into a plugin that
-// will automatically enable this basic functionality in an editor.
-
-// :: (Object) → [Plugin]
-// A convenience plugin that bundles together a simple menu with basic
-// key bindings, input rules, and styling for the example schema.
-// Probably only useful for quickly setting up a passable
-// editor—you'll need more control over your settings in most
-// real-world situations.
-//
-//   options::- The following options are recognized:
-//
-//     schema:: Schema
-//     The schema to generate key bindings and menu items for.
-//
-//     mapKeys:: ?Object
-//     Can be used to [adjust](#example-setup.buildKeymap) the key bindings created.
-//
-//     menuBar:: ?bool
-//     Set to false to disable the menu bar.
-//
-//     history:: ?bool
-//     Set to false to disable the history plugin.
-//
-//     floatingMenu:: ?bool
-//     Set to false to make the menu bar non-floating.
-//
-//     menuContent:: [[MenuItem]]
-//     Can be used to override the menu content.
-export function exampleSetup(options) {
-  let plugins = [
-    buildInputRules(options.schema),
-    keymap(buildKeymap(options.schema, options.mapKeys)),
-    keymap(baseKeymap),
-    dropCursor(),
-    gapCursor()
-  ]
-  if (options.menuBar !== false)
-    plugins.push(menuBar({floating: options.floatingMenu !== false,
-                          content: options.menuContent || buildMenuItems(options.schema).fullMenu}))
-  if (options.history !== false)
-    plugins.push(history())
-
-  return plugins.concat(new Plugin({
-    props: {
-      attributes: {class: "ProseMirror-example-setup-style"}
+  figure: {
+    content: "inline*",
+    marks: "",
+    group: "block",
+    draggable: true,
+    selectable: true,
+    attrs: {
+      src: {default: null},
+      caption: {default: ""},
+    },
+    parseDOM: [
+      {
+        tag: "figure",
+        contentElement: "figcaption",
+        getAttrs(dom) {
+          let img = dom.querySelector("img");
+          return {src: img && img.parentNode === dom ? img.src : null};
+        },
+      },
+      {
+        tag: "img[src]",
+        getAttrs(dom) {
+          return {src: dom.src, caption: dom.alt};
+        },
+        getContent(dom) {
+          return Fragment.from(dom.querySelector("figcaption"));
+        }
+      }
+    ],
+    toDOM(node) {
+      return ["figure", ["img", {src: node.attrs.src, alt: node.attrs.caption}], ["figcaption", 0]]
     }
-  }))
-}
+  },
+
+  text: basicNodes.text,
+  br: basicNodes.hard_break,
+};
+
+const schema = new Schema({nodes, marks: {}});
+const plugins = [
+  keymap(baseKeymap),
+  dropCursor(),
+  gapCursor(),
+];
+
+
+const editorState = EditorState.create({
+    doc: DOMParser.fromSchema(schema).parse(document.getElementById("content")),
+    schema,
+    plugins,
+});
+
+const editorView = new EditorView(document.getElementById("editor"), {
+  state: editorState,
+  nodeViews: {
+    figure(node, view, getPos) {
+      return new FigureView(node, view, getPos);
+    }
+  }
+});
