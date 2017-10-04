@@ -72,3 +72,4 @@ const editorView = new EditorView(document.getElementById("editor"), {
     }
   }
 });
+ProseMirrorDevTools.applyDevTools(editorView, { EditorState: EditorState });
