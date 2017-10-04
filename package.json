@@ -28,7 +28,7 @@
     "prosemirror-schema-basic": "^0.24.0",
     "prosemirror-schema-list": "^0.24.0",
     "prosemirror-state": "^0.24.0",
-    "prosemirror-view": "^0.24.0"
+    "prosemirror-view": "git://github.com/ProseMirror/prosemirror-view.git#master"
   },
   "devDependencies": {
     "rollup": "^0.49.0",
