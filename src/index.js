@@ -37,7 +37,7 @@ const nodes = {
           return {src: dom.src, caption: dom.alt};
         },
         getContent(dom) {
-          return Fragment.from(dom.querySelector("figcaption"));
+          return Fragment.from(schema.text(dom.alt));
         }
       }
     ],
